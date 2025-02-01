@@ -119,3 +119,63 @@ REFERENCES CUSTOMER (CUSTOMER_ID) ON DELETE CASCADE;
 ALTER TABLE PAYMENT
 ADD CONSTRAINT FK_PAYMENT_CART FOREIGN KEY (CART_ID) 
 REFERENCES CART (CART_ID) ON DELETE CASCADE;
+
+
+-- ORDER_HISTORY TABLE (BIG SERIAL)
+CREATE TABLE ORDER_HISTORY (
+    ORDER_ID BIGSERIAL PRIMARY KEY,                              
+    CART_ID BIGINT NOT NULL,                                     
+    CUSTOMER_ID UUID NOT NULL,                                    
+    ORDER_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              
+    TOTAL_AMOUNT NUMERIC(10,2) NOT NULL CHECK (TOTAL_AMOUNT > 0),
+    ORDER_STATUS VARCHAR(20) NOT NULL CHECK (
+        ORDER_STATUS IN ('PENDING', 'COMPLETED', 'CANCELLED')
+    ),
+    SHIPPING_ADDRESS VARCHAR(250) NOT NULL,                      
+    BILLING_ADDRESS VARCHAR(250) NOT NULL,                       
+    PAYMENT_STATUS VARCHAR(20) NOT NULL CHECK (
+        PAYMENT_STATUS IN ('PENDING', 'PAID', 'FAILED')
+    ),
+    PAYMENT_REFERENCE VARCHAR(100),                              
+    COMPLETED_TIMESTAMP TIMESTAMP,                              
+    CANCELLED_TIMESTAMP TIMESTAMP,                               
+    SHIPPING_METHOD VARCHAR(50) NOT NULL CHECK (
+        SHIPPING_METHOD IN ('STANDARD', 'EXPRESS', 'OVERNIGHT')
+    ),
+    CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,               -- Audit field: when the order record was created
+    LAST_MODIFIED TIMESTAMP DEFAULT CURRENT_TIMESTAMP,            -- Audit field: last modification timestamp
+    CREATED_BY UUID,                                              -- Optional: Who created the order (could be the customer or an admin)
+    LAST_MODIFIED_BY UUID                                         -- Optional: Who last modified the order
+);
+
+ALTER TABLE ORDER_HISTORY
+ADD CONSTRAINT FK_ORDER_HISTORY_CART FOREIGN KEY (CART_ID)
+    REFERENCES CART (CART_ID) ON DELETE CASCADE;
+
+ALTER TABLE ORDER_HISTORY
+ADD CONSTRAINT FK_ORDER_HISTORY_CUSTOMER FOREIGN KEY (CUSTOMER_ID)
+    REFERENCES CUSTOMER (CUSTOMER_ID) ON DELETE CASCADE;
+
+
+-- ORDER_ITEMS TABLE
+CREATE TABLE ORDER_ITEMS (
+    ORDER_ITEM_ID BIGSERIAL PRIMARY KEY,   -- Unique identifier for each order item
+    ORDER_ID BIGINT NOT NULL,               -- References the order in ORDER_HISTORY
+    PRODUCT_ID BIGINT NOT NULL,             -- References the product from the PRODUCT table
+    PRODUCT_NAME VARCHAR(100) NOT NULL,     -- Snapshot of the product name at time of order
+    PRODUCT_PRICE NUMERIC(10,2) NOT NULL,     -- Snapshot of the product price
+    QUANTITY INT NOT NULL CHECK (QUANTITY > 0),
+    SUBTOTAL NUMERIC(10,2) NOT NULL,          -- (PRODUCT_PRICE * QUANTITY)
+    -- Additional snapshot columns can be added as needed
+    ORDERED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- Timestamp for when this item was added to the order
+);
+
+-- Add a foreign key from ORDER_ITEMS to ORDER_HISTORY
+ALTER TABLE ORDER_ITEMS
+ADD CONSTRAINT FK_ORDER_ITEMS_ORDER FOREIGN KEY (ORDER_ID)
+    REFERENCES ORDER_HISTORY (ORDER_ID) ON DELETE CASCADE;
+
+-- Add a foreign key from ORDER_ITEMS to PRODUCT
+ALTER TABLE ORDER_ITEMS
+ADD CONSTRAINT FK_ORDER_ITEMS_PRODUCT FOREIGN KEY (PRODUCT_ID)
+    REFERENCES PRODUCT (PRODUCT_ID) ON DELETE CASCADE;
