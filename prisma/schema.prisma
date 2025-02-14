@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model brand {
+  brand_id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brand_name           String    @db.VarChar(50)
+  brand_location       String?   @db.VarChar(50)
+  brand_official_phone String?   @db.VarChar(15)
+  product              product[]
+}
+
+model cart {
+  cart_id       BigInt          @id @default(autoincrement())
+  customer_id   String          @unique @db.Uuid
+  delivery_time DateTime?       @db.Time(6)
+  customer      customer        @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_cart_customer")
+  cart_items    cart_items[]
+  order_history order_history[]
+  payment       payment[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model cart_items {
+  cart_id    BigInt
+  product_id BigInt
+  quantity   Int
+  cart       cart    @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction)
+  product    product @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([cart_id, product_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model customer {
+  customer_id          String                 @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                 String                 @db.VarChar(50)
+  address              String                 @db.VarChar(250)
+  phone_no             String?                @db.VarChar(15)
+  pincode              Decimal                @db.Decimal(6, 0)
+  age                  Decimal                @db.Decimal
+  gender               String?                @db.VarChar(7)
+  doctor_id            String?                @db.Uuid
+  cart                 cart?
+  doctor_consultation  doctor_consultation?   @relation(fields: [doctor_id], references: [doctor_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_customer_doctor")
+  medication_adherence medication_adherence[]
+  medication_schedule  medication_schedule[]
+  order_history        order_history[]
+  payment              payment[]
+  user_rewards         user_rewards?
+  wishlist             wishlist[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model doctor_consultation {
+  doctor_id             String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  doctor_name           String     @db.VarChar(50)
+  doctor_address        String?    @db.VarChar(250)
+  doctor_phone_no       String?    @db.VarChar(15)
+  doctor_qualification  String     @db.VarChar(100)
+  doctor_specialization String     @db.VarChar(25)
+  customer              customer[]
+}
+
+model medication_adherence {
+  log_id              BigInt              @id @default(autoincrement())
+  schedule_id         BigInt
+  customer_id         String              @db.Uuid
+  taken_at            DateTime?           @default(now()) @db.Timestamp(6)
+  confirmed           Boolean?            @default(false)
+  customer            customer            @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_medication_adherence_customer")
+  medication_schedule medication_schedule @relation(fields: [schedule_id], references: [schedule_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_medication_adherence_schedule")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model medication_schedule {
+  schedule_id          BigInt                 @id @default(autoincrement())
+  customer_id          String                 @db.Uuid
+  medicine_id          BigInt
+  dosage               String                 @db.VarChar(50)
+  frequency            String                 @db.VarChar(50)
+  start_date           DateTime               @db.Date
+  end_date             DateTime?              @db.Date
+  reminder_time        DateTime?              @db.Time(6)
+  medication_adherence medication_adherence[]
+  customer             customer               @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_medication_schedule_customer")
+  product              product                @relation(fields: [medicine_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_medication_schedule_medicine")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model medicine_shop {
+  shop_id       String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  shop_name     String    @db.VarChar(100)
+  shop_address  String    @db.VarChar(250)
+  shop_phone_no String?   @db.VarChar(15)
+  product       product[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model order_history {
+  order_id            BigInt        @id @default(autoincrement())
+  cart_id             BigInt
+  customer_id         String        @db.Uuid
+  order_date          DateTime?     @default(now()) @db.Timestamp(6)
+  total_amount        Decimal       @db.Decimal(10, 2)
+  order_status        String        @db.VarChar(20)
+  shipping_address    String        @db.VarChar(250)
+  billing_address     String        @db.VarChar(250)
+  payment_status      String        @db.VarChar(20)
+  payment_reference   String?       @db.VarChar(100)
+  completed_timestamp DateTime?     @db.Timestamp(6)
+  cancelled_timestamp DateTime?     @db.Timestamp(6)
+  shipping_method     String        @db.VarChar(50)
+  created_at          DateTime?     @default(now()) @db.Timestamp(6)
+  last_modified       DateTime?     @default(now()) @db.Timestamp(6)
+  created_by          String?       @db.Uuid
+  last_modified_by    String?       @db.Uuid
+  cart                cart          @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_history_cart")
+  customer            customer      @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_history_customer")
+  order_items         order_items[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model order_items {
+  order_item_id BigInt        @id @default(autoincrement())
+  order_id      BigInt
+  product_id    BigInt
+  product_name  String        @db.VarChar(100)
+  product_price Decimal       @db.Decimal(10, 2)
+  quantity      Int
+  subtotal      Decimal       @db.Decimal(10, 2)
+  ordered_at    DateTime?     @default(now()) @db.Timestamp(6)
+  order_history order_history @relation(fields: [order_id], references: [order_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_items_order")
+  product       product       @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_order_items_product")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payment {
+  payment_id     String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  transaction_id String    @unique @db.VarChar(50)
+  total_price    Decimal   @db.Decimal(10, 2)
+  payment_method String    @db.VarChar(50)
+  payment_status String    @db.VarChar(20)
+  payment_date   DateTime? @default(now()) @db.Timestamp(6)
+  coupon_applied Boolean   @default(false)
+  cart_id        BigInt
+  customer_id    String    @db.Uuid
+  cart           cart      @relation(fields: [cart_id], references: [cart_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_cart")
+  customer       customer  @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_customer")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model product {
+  product_id                 BigInt                @id @default(autoincrement())
+  product_name               String                @db.VarChar(100)
+  product_type               String                @db.VarChar(25)
+  product_quantity           String                @db.VarChar(20)
+  product_img_link           String?               @db.VarChar(1000)
+  product_based_on_gender    String?               @db.VarChar(7)
+  product_age_group          String?               @db.VarChar(20)
+  product_price              Decimal               @db.Decimal(10, 2)
+  product_commission_percent Decimal               @db.Decimal(5, 2)
+  product_mfg_date           DateTime?             @db.Date
+  product_exp_date           DateTime?             @db.Date
+  product_shop_id            String                @db.Uuid
+  product_brand_id           String                @db.Uuid
+  cart_items                 cart_items[]
+  medication_schedule        medication_schedule[]
+  order_items                order_items[]
+  brand                      brand                 @relation(fields: [product_brand_id], references: [brand_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_product_brand")
+  medicine_shop              medicine_shop         @relation(fields: [product_shop_id], references: [shop_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_product_shop")
+  wishlist                   wishlist[]
+}
+
+model user_rewards {
+  reward_id      BigInt    @id @default(autoincrement())
+  customer_id    String    @unique @db.Uuid
+  current_streak Int?      @default(0)
+  total_points   Int?      @default(0)
+  last_updated   DateTime? @default(now()) @db.Timestamp(6)
+  customer       customer  @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_rewards_customer")
+}
+
+model wishlist {
+  customer_id String    @db.Uuid
+  product_id  BigInt
+  added_date  DateTime? @default(now()) @db.Timestamp(6)
+  customer    customer  @relation(fields: [customer_id], references: [customer_id], onDelete: Cascade, onUpdate: NoAction)
+  product     product   @relation(fields: [product_id], references: [product_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([customer_id, product_id])
+}
